@@ -1,17 +1,14 @@
 # Riggle
 
-[![Gem version](https://badge.fury.io/rb/riggle.svg)](https://rubygems.org/gems/riggle)
-[![Downloads](https://img.shields.io/gem/dt/riggle?label=downloads)](https://rubygems.org/gems/riggle)
-[![CI](https://github.com/rbgfx/riggle/actions/workflows/main.yml/badge.svg)](https://github.com/rbgfx/riggle/actions/workflows/main.yml)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D3.1-CC342D?logo=ruby&logoColor=white)](https://www.ruby-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT-750014.svg)](LICENSE.txt)
-
 > OBJ and glTF loading with CPU skinning for Ruby graphics.
 
-Riggle turns common 3D asset files into small Ruby scene objects: meshes,
-primitives, nodes, materials, animation channels, and skinning data.
+[![Gem version](https://badge.fury.io/rb/riggle.svg)](https://rubygems.org/gems/riggle) [![Downloads](https://img.shields.io/gem/dt/riggle?label=downloads)](https://rubygems.org/gems/riggle) [![Ruby](https://img.shields.io/badge/ruby-%3E%3D3.1-CC342D?logo=ruby&logoColor=white)](https://www.ruby-lang.org/) [![CI](https://github.com/rbgfx/riggle/actions/workflows/main.yml/badge.svg)](https://github.com/rbgfx/riggle/actions/workflows/main.yml) [![License](https://img.shields.io/badge/license-MIT-750014.svg)](LICENSE.txt)
 
-**[Features](#features) · [Installation](#installation) · [Quick start](#quick-start) · [Development](#development)**
+**[Features](#features) · [Installation](#installation) · [Requirements](#requirements) · [Quick start](#quick-start) · [Development](#development) · [License](#license) · [Website](https://rbgfx.github.io/riggle/)**
+
+---
+
+Riggle loads common 3D assets into Ruby scene objects with meshes, materials, animations, and skinning data.
 
 ## Features
 
@@ -41,6 +38,11 @@ Or install the released gem:
 ~~~sh
 gem install riggle
 ~~~
+
+## Requirements
+
+- Ruby 3.1 or newer.
+- RBGL is optional and only needed when using the RBGL adapter.
 
 ## Quick start
 
