@@ -1,14 +1,19 @@
-# Riggle
+<h1 align="center">Riggle</h1>
 
-> OBJ and glTF loading with CPU skinning for Ruby graphics.
+<p align="center">OBJ and glTF loading with CPU skinning for Ruby graphics.</p>
 
-[![Gem version](https://badge.fury.io/rb/riggle.svg)](https://rubygems.org/gems/riggle) [![Downloads](https://img.shields.io/gem/dt/riggle?label=downloads)](https://rubygems.org/gems/riggle) [![Ruby](https://img.shields.io/badge/ruby-%3E%3D3.1-CC342D?logo=ruby&logoColor=white)](https://www.ruby-lang.org/) [![CI](https://github.com/rbgfx/riggle/actions/workflows/main.yml/badge.svg)](https://github.com/rbgfx/riggle/actions/workflows/main.yml) [![License](https://img.shields.io/badge/license-MIT-750014.svg)](LICENSE.txt)
+<p align="center">
+  <a href="https://rubygems.org/gems/riggle"><img src="https://badge.fury.io/rb/riggle.svg" alt="Gem Version"></a>
+  <a href="https://rubygems.org/gems/riggle"><img src="https://img.shields.io/gem/dt/riggle?label=downloads" alt="Downloads"></a>
+  <a href="https://www.ruby-lang.org/"><img src="https://img.shields.io/badge/ruby-%3E%3D3.1-CC342D?logo=ruby&amp;logoColor=white" alt="Ruby Version"></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-750014.svg" alt="License"></a>
+</p>
 
-**[Features](#features) · [Installation](#installation) · [Requirements](#requirements) · [Quick start](#quick-start) · [Development](#development) · [License](#license) · [Website](https://rbgfx.github.io/riggle/)**
+[Features](#features) · [Installation](#installation) · [Quick Start](#quick-start)
 
----
+***
 
-Riggle loads common 3D assets into Ruby scene objects with meshes, materials, animations, and skinning data.
+Riggle turns common 3D asset files into small Ruby scene objects: meshes, primitives, nodes, materials, animation channels, and skinning data.
 
 ## Features
 
@@ -39,12 +44,12 @@ Or install the released gem:
 gem install riggle
 ~~~
 
-## Requirements
+### Requirements
 
 - Ruby 3.1 or newer.
 - RBGL is optional and only needed when using the RBGL adapter.
 
-## Quick start
+## Quick Start
 
 ~~~ruby
 require "riggle"
@@ -68,6 +73,10 @@ Pass an <code>RBGL::Engine::VertexLayout</code> to select an explicit layout.
 bundle install
 bundle exec rake verify
 ~~~
+
+## Contributing
+
+Bug reports and pull requests are welcome at [rbgfx/riggle](https://github.com/rbgfx/riggle).
 
 ## License
 
