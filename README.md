@@ -2,7 +2,7 @@
 
 [![Gem version](https://badge.fury.io/rb/riggle.svg)](https://rubygems.org/gems/riggle)
 [![Downloads](https://img.shields.io/gem/dt/riggle?label=downloads)](https://rubygems.org/gems/riggle)
-[![CI](https://github.com/rbgfx/riggle/actions/workflows/ci.yml/badge.svg)](https://github.com/rbgfx/riggle/actions/workflows/ci.yml)
+[![CI](https://github.com/rbgfx/riggle/actions/workflows/main.yml/badge.svg)](https://github.com/rbgfx/riggle/actions/workflows/main.yml)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D3.1-CC342D?logo=ruby&logoColor=white)](https://www.ruby-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-750014.svg)](LICENSE.txt)
 
