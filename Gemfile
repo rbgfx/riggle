@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 # Specify your gem's dependencies in riggle.gemspec
 gemspec
+gem "rbgl"
 
 gem "irb"
 gem "rake", "~> 13.0"
