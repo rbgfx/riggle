@@ -558,6 +558,14 @@ module Riggle
       raise UnsupportedError, "required glTF extensions are not supported" unless json.fetch("extensionsRequired", []).empty?
       buffers = json.fetch("buffers", []).map { |buffer| buffer_data(buffer, binary, base_dir) }
       views = json.fetch("bufferViews", [])
+      views.each do |view|
+        index = view.fetch("buffer")
+        raise ArgumentError, "invalid glTF buffer view" unless index.is_a?(Integer) && index.between?(0, buffers.length - 1)
+
+        offset = view.fetch("byteOffset", 0)
+        length = view.fetch("byteLength")
+        raise ArgumentError, "invalid glTF buffer view" unless offset.is_a?(Integer) && offset >= 0 && length.is_a?(Integer) && length >= 0 && offset + length <= buffers[index].bytesize
+      end
       access = lambda do |index|
         definition = json.fetch("accessors")[index]
         view = definition["bufferView"] && views[definition["bufferView"]]
@@ -568,12 +576,16 @@ module Riggle
         read_values = lambda do |buffer_view, byte_offset, value_count, value_format, value_size, value_components|
           raw = buffers.fetch(buffer_view.fetch("buffer"))
           view_start = buffer_view.fetch("byteOffset", 0)
+          view_length = buffer_view.fetch("byteLength")
+          raise ArgumentError, "invalid glTF accessor byte offset" unless byte_offset.is_a?(Integer) && byte_offset >= 0
+          raise ArgumentError, "invalid glTF accessor count" unless value_count.is_a?(Integer) && value_count >= 0
+
           start = view_start + byte_offset
-          view_end = view_start + buffer_view.fetch("byteLength")
+          view_end = view_start + view_length
           stride = buffer_view["byteStride"] || value_size
-          raise ArgumentError, "invalid glTF accessor stride" if stride < value_size
+          raise ArgumentError, "invalid glTF accessor stride" unless stride.is_a?(Integer) && stride >= value_size
           needed = value_count.zero? ? 0 : (value_count - 1) * stride + value_size
-          raise ArgumentError, "glTF accessor exceeds buffer view" if start + needed > view_end || start + needed > raw.bytesize
+          raise ArgumentError, "glTF accessor exceeds buffer view" if start + needed > view_end
           Array.new(value_count) { |item| raw.byteslice(start + item * stride, value_size).unpack(value_format * value_components) }
         end
         values = if view

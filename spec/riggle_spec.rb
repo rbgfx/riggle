@@ -29,6 +29,46 @@ RSpec.describe Riggle do
     expect(Riggle.load(path).meshes.first.primitives.first.positions.length).to eq(3)
   end
 
+  it "rejects glTF accessors outside their buffer view" do
+    bytes = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0].pack("e*")
+    uri = "data:application/octet-stream;base64,#{[bytes].pack('m0')}"
+    Dir.mktmpdir do |directory|
+      path = File.join(directory, "invalid.gltf")
+      document = {
+        "asset" => { "version" => "2.0" },
+        "buffers" => [{ "uri" => uri, "byteLength" => bytes.bytesize }],
+        "bufferViews" => [{ "buffer" => 0, "byteOffset" => 12, "byteLength" => 12 }],
+        "accessors" => [{ "bufferView" => 0, "byteOffset" => -12, "componentType" => 5126, "count" => 1, "type" => "VEC3" }],
+        "meshes" => [{ "primitives" => [{ "attributes" => { "POSITION" => 0 } }] }]
+      }
+      [
+        [12, 12, -12, /glTF accessor byte offset/],
+        [-12, 12, 0, /glTF buffer view/],
+        [12, 24, 0, /glTF buffer view/]
+      ].each do |view_offset, view_length, accessor_offset, message|
+        document["bufferViews"][0] = { "buffer" => 0, "byteOffset" => view_offset, "byteLength" => view_length }
+        document["accessors"][0]["byteOffset"] = accessor_offset
+        File.write(path, JSON.generate(document))
+        expect { Riggle.load(path) }.to raise_error(ArgumentError, message)
+      end
+    end
+  end
+
+  it "rejects glTF image buffer views outside their buffer" do
+    bytes = "image-data"
+    document = {
+      "asset" => { "version" => "2.0" },
+      "buffers" => [{ "uri" => "data:application/octet-stream;base64,#{[bytes].pack('m0')}", "byteLength" => bytes.bytesize }],
+      "bufferViews" => [{ "buffer" => 0, "byteOffset" => -4, "byteLength" => 4 }],
+      "images" => [{ "bufferView" => 0 }], "meshes" => [], "nodes" => []
+    }
+    Dir.mktmpdir do |directory|
+      path = File.join(directory, "invalid-image.gltf")
+      File.write(path, JSON.generate(document))
+      expect { Riggle.load(path, load_images: false) }.to raise_error(ArgumentError, /glTF buffer view/)
+    end
+  end
+
   it "applies sparse glTF accessor overrides" do
     bytes = ([0.0] * 9).pack("e*") + [1].pack("C") + [1.0, 2.0, 3.0].pack("e*")
     uri = "data:application/octet-stream;base64,#{[bytes].pack("m0")}"
