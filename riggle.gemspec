@@ -5,7 +5,7 @@ require_relative "lib/riggle/version"
 Gem::Specification.new do |spec|
   spec.name = "riggle"
   spec.version = Riggle::VERSION
-  spec.authors = ["ydah"]
+  spec.authors = ["Yudai Takada"]
   spec.email = ["t.yudai92@gmail.com"]
 
   spec.summary = "OBJ and glTF loading for Ruby graphics"
