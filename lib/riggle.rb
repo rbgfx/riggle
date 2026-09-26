@@ -190,9 +190,7 @@ module Riggle
     def apply(primitive, skin, scene, method: :lbs)
       raise ArgumentError, "unknown skinning method: #{method}" unless %i[lbs dqs].include?(method.to_sym)
       return primitive.positions.dup unless skin
-      matrices = skin.joints.map.with_index do |joint, index|
-        scene.world_matrix(joint) * (skin.inverse_bind_matrices&.[](index) || Mat4.identity)
-      end
+      matrices = joint_matrices(primitive, skin, scene)
       return apply_dual_quaternions(primitive, matrices) if method.to_sym == :dqs && matrices.all? { |matrix| rigid_transform?(matrix) }
       return apply_linear_blend(primitive, matrices)
     end
@@ -202,14 +200,24 @@ module Riggle
       return nil unless primitive.normals
       return primitive.normals.map(&:dup) unless skin
 
-      matrices = skin.joints.map.with_index do |joint, index|
-        scene.world_matrix(joint) * (skin.inverse_bind_matrices&.[](index) || Mat4.identity)
-      end
+      matrices = joint_matrices(primitive, skin, scene)
       if method.to_sym == :dqs && matrices.all? { |matrix| rigid_transform?(matrix) }
         return apply_dual_quaternion_normals(primitive, matrices)
       end
       apply_linear_blend_normals(primitive, matrices)
     end
+
+    def joint_matrices(primitive, skin, scene)
+      primitive.joints&.each do |indices|
+        indices.each do |index|
+          raise ArgumentError, "invalid skin joint index: #{index}" unless index.is_a?(Integer) && index >= 0 && index < skin.joints.length
+        end
+      end
+      skin.joints.map.with_index do |joint, index|
+        scene.world_matrix(joint) * (skin.inverse_bind_matrices&.[](index) || Mat4.identity)
+      end
+    end
+    private_class_method :joint_matrices
 
     def apply_linear_blend(primitive, matrices)
       primitive.positions.each_with_index.map do |position, index|

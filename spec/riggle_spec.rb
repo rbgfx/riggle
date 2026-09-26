@@ -315,6 +315,21 @@ RSpec.describe Riggle do
     expect(result.y).to be_within(1e-10).of(0.0)
   end
 
+  it "rejects invalid vertex joint indices for positions and normals" do
+    origin = Riggle::Vec3.new(x: 0.0, y: 0.0, z: 0.0)
+    node = Riggle::Node.new(children: [], translation: origin, rotation: Riggle::Quat.new(x: 0.0, y: 0.0, z: 0.0, w: 1.0), scale: Riggle::Vec3.new(x: 1.0, y: 1.0, z: 1.0))
+    scene = Riggle::Scene.new(nodes: [node])
+    skin = Riggle::Skin.new(joints: [0])
+
+    [-1, 1].each do |index|
+      primitive = Riggle::Primitive.new(positions: [origin], normals: [origin], joints: [[index]], weights: [[1.0]])
+      %i[lbs dqs].each do |method|
+        expect { Riggle::Skinning.apply(primitive, skin, scene, method: method) }.to raise_error(ArgumentError, /joint index/)
+        expect { Riggle::Skinning.apply_normals(primitive, skin, scene, method: method) }.to raise_error(ArgumentError, /joint index/)
+      end
+    end
+  end
+
   it "falls back to linear blend skinning for non rigid transforms" do
     node = Riggle::Node.new(children: [], translation: Riggle::Vec3.new(x: 0, y: 0, z: 0), rotation: Riggle::Quat.new(x: 0, y: 0, z: 0, w: 1), scale: Riggle::Vec3.new(x: 2, y: 1, z: 1))
     scene = Riggle::Scene.new(nodes: [node])
