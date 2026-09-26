@@ -56,6 +56,49 @@ RSpec.describe Riggle do
     end
   end
 
+  it "rejects negative glTF scene references instead of using the last item" do
+    bytes = [1.0, 2.0, 3.0].pack("e*")
+    document = {
+      "asset" => { "version" => "2.0" },
+      "buffers" => [{ "uri" => "data:application/octet-stream;base64,#{[bytes].pack('m0')}", "byteLength" => bytes.bytesize }],
+      "bufferViews" => [{ "buffer" => 0, "byteLength" => bytes.bytesize }],
+      "accessors" => [{ "bufferView" => 0, "componentType" => 5126, "count" => 1, "type" => "VEC3" }],
+      "images" => [{ "uri" => "data:image/png;base64," }],
+      "textures" => [{ "source" => 0 }],
+      "materials" => [{ "pbrMetallicRoughness" => { "baseColorTexture" => { "index" => 0 } } }],
+      "meshes" => [{ "primitives" => [{ "attributes" => { "POSITION" => 0 }, "material" => 0 }] }],
+      "nodes" => [{ "mesh" => 0, "skin" => 0, "children" => [] }],
+      "skins" => [{ "joints" => [0], "skeleton" => 0 }]
+    }
+    animation = lambda do |json, sampler:, node:|
+      json["animations"] = [{ "samplers" => [{ "input" => 0, "output" => 0 }],
+                              "channels" => [{ "sampler" => sampler, "target" => { "node" => node, "path" => "translation" } }] }]
+    end
+    changes = [
+      ["image", ->(json) { json["textures"][0]["source"] = -1 }],
+      ["texture", ->(json) { json["materials"][0]["pbrMetallicRoughness"]["baseColorTexture"]["index"] = -1 }],
+      ["material", ->(json) { json["meshes"][0]["primitives"][0]["material"] = -1 }],
+      ["mesh", ->(json) { json["nodes"][0]["mesh"] = -1 }],
+      ["node", ->(json) { json["nodes"][0]["children"] = [-1] }],
+      ["node", ->(json) { json["skins"][0]["joints"] = [-1] }],
+      ["node", ->(json) { json["skins"][0]["skeleton"] = -1 }],
+      ["skin", ->(json) { json["nodes"][0]["skin"] = -1 }],
+      ["animation sampler", ->(json) { animation.call(json, sampler: -1, node: 0) }],
+      ["node", ->(json) { animation.call(json, sampler: 0, node: -1) }]
+    ]
+    Dir.mktmpdir do |directory|
+      path = File.join(directory, "scene.gltf")
+      File.write(path, JSON.generate(document))
+      expect { Riggle.load(path, load_images: false) }.not_to raise_error
+      changes.each do |kind, change|
+        invalid = JSON.parse(JSON.generate(document))
+        change.call(invalid)
+        File.write(path, JSON.generate(invalid))
+        expect { Riggle.load(path, load_images: false) }.to raise_error(ArgumentError, /glTF #{kind} index/)
+      end
+    end
+  end
+
   it "rejects glTF accessors outside their buffer view" do
     bytes = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0].pack("e*")
     uri = "data:application/octet-stream;base64,#{[bytes].pack('m0')}"

@@ -556,6 +556,11 @@ module Riggle
       json, binary = document(path)
       raise UnsupportedError, "glTF 2.x is required" unless json.dig("asset", "version").to_s.match?(/\A2\./)
       raise UnsupportedError, "required glTF extensions are not supported" unless json.fetch("extensionsRequired", []).empty?
+      reference = lambda do |items, index, kind|
+        raise ArgumentError, "invalid glTF #{kind} index" unless index.is_a?(Integer) && index.between?(0, items.length - 1)
+
+        items[index]
+      end
       buffers = json.fetch("buffers", []).map { |buffer| buffer_data(buffer, binary, base_dir) }
       views = json.fetch("bufferViews", [])
       views.each do |view|
@@ -566,16 +571,10 @@ module Riggle
         length = view.fetch("byteLength")
         raise ArgumentError, "invalid glTF buffer view" unless offset.is_a?(Integer) && offset >= 0 && length.is_a?(Integer) && length >= 0 && offset + length <= buffers[index].bytesize
       end
-      view_at = lambda do |index|
-        raise ArgumentError, "invalid glTF buffer view index" unless index.is_a?(Integer) && index.between?(0, views.length - 1)
-
-        views[index]
-      end
+      view_at = ->(index) { reference.call(views, index, "buffer view") }
       accessors = json.fetch("accessors", [])
       access = lambda do |index|
-        raise ArgumentError, "invalid glTF accessor index" unless index.is_a?(Integer) && index.between?(0, accessors.length - 1)
-
-        definition = accessors[index]
+        definition = reference.call(accessors, index, "accessor")
         view = view_at.call(definition["bufferView"]) if definition.key?("bufferView")
         count = definition["count"]
         components = COMPONENTS.fetch(definition["type"])
@@ -655,10 +654,10 @@ module Riggle
           end
         end
       end
-      textures = json.fetch("textures", []).map { |texture| image_refs[texture["source"]] }
+      textures = json.fetch("textures", []).map { |texture| reference.call(image_refs, texture["source"], "image") }
       materials = json.fetch("materials", []).map do |material|
         pbr = material["pbrMetallicRoughness"] || {}
-        texture = pbr["baseColorTexture"] && textures[pbr["baseColorTexture"]["index"]]
+        texture = pbr["baseColorTexture"] && reference.call(textures, pbr["baseColorTexture"]["index"], "texture")
         Material.new(name: material["name"], base_color_factor: pbr["baseColorFactor"] || [1, 1, 1, 1], base_color_texture: texture, emissive: material["emissiveFactor"] || [0, 0, 0], alpha_mode: material["alphaMode"] || "OPAQUE")
       end
       meshes = json.fetch("meshes", []).map do |mesh|
@@ -678,29 +677,38 @@ module Riggle
             joints: attributes["JOINTS_0"] && access.call(attributes["JOINTS_0"]),
             weights: attributes["WEIGHTS_0"] && access.call(attributes["WEIGHTS_0"]),
             indices: primitive["indices"] ? access.call(primitive["indices"]) : (0...position_values.length).to_a,
-            material: materials[primitive["material"] || 0]
+            material: primitive.key?("material") ? reference.call(materials, primitive["material"], "material") : nil
           )
         end
         Mesh.new(name: mesh["name"], primitives: primitives)
       end
-      nodes = json.fetch("nodes", []).map do |node|
+      node_definitions = json.fetch("nodes", [])
+      skin_definitions = json.fetch("skins", [])
+      nodes = node_definitions.map do |node|
+        children = node["children"] || []
+        children.each { |index| reference.call(node_definitions, index, "node") }
+        reference.call(skin_definitions, node["skin"], "skin") if node.key?("skin")
         translation = node["translation"] || [0, 0, 0]
         rotation = node["rotation"] || [0, 0, 0, 1]
         scale = node["scale"] || [1, 1, 1]
         matrix = node["matrix"]&.each_slice(4)&.to_a
-        Node.new(name: node["name"], children: node["children"] || [], mesh: node["mesh"] && meshes[node["mesh"]], translation: Vec3.new(x: translation[0], y: translation[1], z: translation[2]), rotation: Quat.new(x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3]), scale: Vec3.new(x: scale[0], y: scale[1], z: scale[2]), matrix: matrix && Mat4.new(matrix.transpose.flatten), skin: node["skin"])
+        Node.new(name: node["name"], children: children, mesh: node.key?("mesh") ? reference.call(meshes, node["mesh"], "mesh") : nil, translation: Vec3.new(x: translation[0], y: translation[1], z: translation[2]), rotation: Quat.new(x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3]), scale: Vec3.new(x: scale[0], y: scale[1], z: scale[2]), matrix: matrix && Mat4.new(matrix.transpose.flatten), skin: node["skin"])
       end
-      skins = json.fetch("skins", []).map do |skin|
+      skins = skin_definitions.map do |skin|
+        joints = skin.fetch("joints")
+        joints.each { |index| reference.call(nodes, index, "node") }
+        reference.call(nodes, skin["skeleton"], "node") if skin.key?("skeleton")
         inverse_bind_matrices = if skin["inverseBindMatrices"]
           access.call(skin["inverseBindMatrices"]).map { |value| Mat4.new(value.each_slice(4).to_a.transpose.flatten) }
         end
-        Skin.new(joints: skin.fetch("joints"), inverse_bind_matrices: inverse_bind_matrices, skeleton: skin["skeleton"])
+        Skin.new(joints: joints, inverse_bind_matrices: inverse_bind_matrices, skeleton: skin["skeleton"])
       end
       animations = json.fetch("animations", []).map do |animation|
         samplers = animation.fetch("samplers")
         channels = animation.fetch("channels").map do |channel|
-          sampler = samplers.fetch(channel.fetch("sampler"))
+          sampler = reference.call(samplers, channel.fetch("sampler"), "animation sampler")
           target = channel.fetch("target")
+          reference.call(nodes, target.fetch("node"), "node")
           Channel.new(node_index: target.fetch("node"), path: target.fetch("path"), times: access.call(sampler.fetch("input")), values: access.call(sampler.fetch("output")), interpolation: sampler.fetch("interpolation", "LINEAR"))
         end
         Animation.new(name: animation["name"], channels: channels)
