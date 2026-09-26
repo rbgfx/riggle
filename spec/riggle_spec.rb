@@ -299,6 +299,22 @@ RSpec.describe Riggle do
     expect(Riggle::Skinning.apply(primitive, skin, scene, method: :dqs).first.to_a).to eq([3.0, 0.0, 0.0])
   end
 
+  it "keeps a shared translation when blending rotated joints" do
+    origin = Riggle::Vec3.new(x: 0.0, y: 0.0, z: 0.0)
+    translation = Riggle::Vec3.new(x: 2.0, y: 0.0, z: 0.0)
+    scale = Riggle::Vec3.new(x: 1.0, y: 1.0, z: 1.0)
+    nodes = [0.0, Math.sqrt(0.5)].map do |sine|
+      Riggle::Node.new(children: [], translation: translation, rotation: Riggle::Quat.new(x: 0.0, y: 0.0, z: sine, w: Math.sqrt(1 - sine * sine)), scale: scale)
+    end
+    scene = Riggle::Scene.new(nodes: nodes)
+    primitive = Riggle::Primitive.new(positions: [origin], joints: [[0, 1]], weights: [[0.5, 0.5]])
+    skin = Riggle::Skin.new(joints: [0, 1], inverse_bind_matrices: [Riggle::Mat4.identity, Riggle::Mat4.identity])
+
+    result = Riggle::Skinning.apply(primitive, skin, scene, method: :dqs).first
+    expect(result.x).to be_within(1e-10).of(2.0)
+    expect(result.y).to be_within(1e-10).of(0.0)
+  end
+
   it "falls back to linear blend skinning for non rigid transforms" do
     node = Riggle::Node.new(children: [], translation: Riggle::Vec3.new(x: 0, y: 0, z: 0), rotation: Riggle::Quat.new(x: 0, y: 0, z: 0, w: 1), scale: Riggle::Vec3.new(x: 2, y: 1, z: 1))
     scene = Riggle::Scene.new(nodes: [node])

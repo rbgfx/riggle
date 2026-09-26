@@ -361,8 +361,10 @@ module Riggle
     private_class_method :dual_quaternion
 
     def transform_dual_quaternion(point, real, dual)
-      real = quaternion_normalize(real)
-      dual = quaternion_scale(dual, 1.0 / Math.sqrt(real.sum { |value| value * value }))
+      length = Math.sqrt(real.sum { |value| value * value })
+      return point if length.zero?
+      real = quaternion_scale(real, 1.0 / length)
+      dual = quaternion_scale(dual, 1.0 / length)
       rotated = quaternion_multiply(quaternion_multiply(real, [point.x, point.y, point.z, 0.0]), quaternion_conjugate(real))
       translation = quaternion_multiply(dual, quaternion_conjugate(real)).first(3).map { |value| value * 2 }
       Vec3.new(x: rotated[0] + translation[0], y: rotated[1] + translation[1], z: rotated[2] + translation[2])
