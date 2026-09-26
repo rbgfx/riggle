@@ -272,6 +272,17 @@ RSpec.describe Riggle do
     expect(scene.world_matrix(0).transform(Riggle::Vec3.new(x: 0, y: 0, z: 0)).to_a).to eq([1.0, 0.0, 0.0])
   end
 
+  it "rejects invalid scene node indices" do
+    node = Riggle::Node.new(children: [], translation: Riggle::Vec3.new(x: 0, y: 0, z: 0), rotation: Riggle::Quat.new(x: 0, y: 0, z: 0, w: 1), scale: Riggle::Vec3.new(x: 1, y: 1, z: 1))
+    scene = Riggle::Scene.new(nodes: [node])
+
+    [-1, 1].each do |index|
+      expect { scene.world_matrix(index) }.to raise_error(ArgumentError, /node/)
+      expect { scene.apply_pose!(index => { translation: [1, 2, 3] }) }.to raise_error(ArgumentError, /node/)
+    end
+    expect(node.translation.to_a).to eq([0, 0, 0])
+  end
+
   it "transposes glTF column-major node matrices before transforming points" do
     path = File.join(Dir.tmpdir, "riggle-matrix.gltf")
     File.write(path, JSON.generate("asset" => { "version" => "2.0" }, "nodes" => [{ "matrix" => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 3, 4, 5, 1] }]))

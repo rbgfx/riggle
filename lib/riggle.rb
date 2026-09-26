@@ -417,7 +417,10 @@ module Riggle
     end
 
     def world_matrix(node)
-      node = @nodes[node] if node.is_a?(Integer)
+      if node.is_a?(Integer)
+        raise ArgumentError, "invalid node index: #{node}" unless node >= 0 && node < @nodes.length
+        node = @nodes[node]
+      end
       index = @nodes.index(node)
       raise ArgumentError, "node is not part of the scene" unless index
       parent = @nodes.find { |candidate| candidate.children.to_a.include?(index) }
@@ -427,8 +430,8 @@ module Riggle
 
     def apply_pose!(pose)
       pose.each do |index, values|
+        raise ArgumentError, "invalid node index: #{index}" unless index.is_a?(Integer) && index >= 0 && index < @nodes.length
         node = @nodes[index]
-        raise ArgumentError, "invalid node index: #{index}" unless node
         values.each do |key, value|
           node[key] = case key.to_sym
           when :translation, :scale then Vec3.new(x: value[0], y: value[1], z: value[2])
