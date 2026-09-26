@@ -566,9 +566,17 @@ module Riggle
         length = view.fetch("byteLength")
         raise ArgumentError, "invalid glTF buffer view" unless offset.is_a?(Integer) && offset >= 0 && length.is_a?(Integer) && length >= 0 && offset + length <= buffers[index].bytesize
       end
+      view_at = lambda do |index|
+        raise ArgumentError, "invalid glTF buffer view index" unless index.is_a?(Integer) && index.between?(0, views.length - 1)
+
+        views[index]
+      end
+      accessors = json.fetch("accessors", [])
       access = lambda do |index|
-        definition = json.fetch("accessors")[index]
-        view = definition["bufferView"] && views[definition["bufferView"]]
+        raise ArgumentError, "invalid glTF accessor index" unless index.is_a?(Integer) && index.between?(0, accessors.length - 1)
+
+        definition = accessors[index]
+        view = view_at.call(definition["bufferView"]) if definition.key?("bufferView")
         count = definition["count"]
         components = COMPONENTS.fetch(definition["type"])
         format = FORMATS.fetch(definition["componentType"])
@@ -599,11 +607,11 @@ module Riggle
         if sparse
           sparse_count = sparse.fetch("count")
           raise ArgumentError, "sparse accessor count exceeds accessor count" if sparse_count > count
-          index_view = views.fetch(sparse.fetch("indices").fetch("bufferView"))
+          index_view = view_at.call(sparse.fetch("indices").fetch("bufferView"))
           index_component = sparse.fetch("indices").fetch("componentType")
           index_format = { 5121 => "C", 5123 => "S<", 5125 => "L<" }.fetch(index_component) { raise ArgumentError, "invalid sparse index component type" }
           index_values = read_values.call(index_view, sparse["indices"].fetch("byteOffset", 0), sparse_count, index_format, format_size(index_format), 1).map(&:first)
-          value_view = views.fetch(sparse.fetch("values").fetch("bufferView"))
+          value_view = view_at.call(sparse.fetch("values").fetch("bufferView"))
           sparse_values = read_values.call(value_view, sparse["values"].fetch("byteOffset", 0), sparse_count, format, item_size, components)
           index_values.each_with_index do |target, sparse_index|
             raise ArgumentError, "sparse accessor index is out of range" if target >= count
@@ -638,7 +646,7 @@ module Riggle
       end
       image_refs = json.fetch("images", []).each_with_index.map do |image, index|
         next image_refs[index] if image["uri"]
-        view = views.fetch(image.fetch("bufferView"))
+        view = view_at.call(image.fetch("bufferView"))
         raw = buffers.fetch(view.fetch("buffer")).byteslice(view.fetch("byteOffset", 0), view.fetch("byteLength"))
         image_refs[index].tap do |reference|
           if load_images

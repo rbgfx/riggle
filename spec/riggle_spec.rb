@@ -29,6 +29,33 @@ RSpec.describe Riggle do
     expect(Riggle.load(path).meshes.first.primitives.first.positions.length).to eq(3)
   end
 
+  it "rejects invalid glTF accessor and buffer view references" do
+    bytes = [1.0, 2.0, 3.0].pack("e*")
+    uri = "data:application/octet-stream;base64,#{[bytes].pack('m0')}"
+    document = {
+      "asset" => { "version" => "2.0" },
+      "buffers" => [{ "uri" => uri, "byteLength" => bytes.bytesize }],
+      "bufferViews" => [{ "buffer" => 0, "byteLength" => bytes.bytesize }],
+      "accessors" => [{ "bufferView" => 0, "componentType" => 5126, "count" => 1, "type" => "VEC3" }],
+      "meshes" => [{ "primitives" => [{ "attributes" => { "POSITION" => 0 } }] }]
+    }
+    Dir.mktmpdir do |directory|
+      path = File.join(directory, "invalid-reference.gltf")
+      [-1, 1].each do |index|
+        document["meshes"][0]["primitives"][0]["attributes"]["POSITION"] = index
+        File.write(path, JSON.generate(document))
+        expect { Riggle.load(path) }.to raise_error(ArgumentError, /glTF accessor index/)
+      end
+
+      document["meshes"][0]["primitives"][0]["attributes"]["POSITION"] = 0
+      [-1, 1].each do |index|
+        document["accessors"][0]["bufferView"] = index
+        File.write(path, JSON.generate(document))
+        expect { Riggle.load(path) }.to raise_error(ArgumentError, /glTF buffer view index/)
+      end
+    end
+  end
+
   it "rejects glTF accessors outside their buffer view" do
     bytes = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0].pack("e*")
     uri = "data:application/octet-stream;base64,#{[bytes].pack('m0')}"
@@ -66,6 +93,10 @@ RSpec.describe Riggle do
       path = File.join(directory, "invalid-image.gltf")
       File.write(path, JSON.generate(document))
       expect { Riggle.load(path, load_images: false) }.to raise_error(ArgumentError, /glTF buffer view/)
+      document["bufferViews"][0]["byteOffset"] = 0
+      document["images"][0]["bufferView"] = -1
+      File.write(path, JSON.generate(document))
+      expect { Riggle.load(path, load_images: false) }.to raise_error(ArgumentError, /glTF buffer view index/)
     end
   end
 
