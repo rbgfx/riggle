@@ -99,6 +99,18 @@ RSpec.describe Riggle do
     end
   end
 
+  it "rejects cyclic or ambiguous glTF node hierarchies" do
+    Dir.mktmpdir do |directory|
+      path = File.join(directory, "nodes.gltf")
+      [[{ "children" => [0] }],
+       [{ "children" => [1] }, { "children" => [0] }],
+       [{ "children" => [2] }, { "children" => [2] }, {}]].each do |nodes|
+        File.write(path, JSON.generate("asset" => { "version" => "2.0" }, "nodes" => nodes))
+        expect { Riggle.load(path) }.to raise_error(ArgumentError, /glTF node hierarchy/)
+      end
+    end
+  end
+
   it "rejects glTF accessors outside their buffer view" do
     bytes = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0].pack("e*")
     uri = "data:application/octet-stream;base64,#{[bytes].pack('m0')}"

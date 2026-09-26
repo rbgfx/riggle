@@ -684,9 +684,27 @@ module Riggle
       end
       node_definitions = json.fetch("nodes", [])
       skin_definitions = json.fetch("skins", [])
+      parent_counts = Array.new(node_definitions.length, 0)
+      node_definitions.each do |node|
+        (node["children"] || []).each do |child|
+          reference.call(node_definitions, child, "node")
+          parent_counts[child] += 1
+          raise ArgumentError, "invalid glTF node hierarchy: multiple parents" if parent_counts[child] > 1
+        end
+      end
+      roots = parent_counts.each_index.select { |index| parent_counts[index].zero? }
+      visited = 0
+      until roots.empty?
+        visited += 1
+        (node_definitions[roots.pop]["children"] || []).each do |child|
+          parent_counts[child] -= 1
+          roots << child if parent_counts[child].zero?
+        end
+      end
+      raise ArgumentError, "invalid glTF node hierarchy: cycle" unless visited == node_definitions.length
+
       nodes = node_definitions.map do |node|
         children = node["children"] || []
-        children.each { |index| reference.call(node_definitions, index, "node") }
         reference.call(skin_definitions, node["skin"], "skin") if node.key?("skin")
         translation = node["translation"] || [0, 0, 0]
         rotation = node["rotation"] || [0, 0, 0, 1]
